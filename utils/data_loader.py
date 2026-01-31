@@ -4,10 +4,28 @@ Módulo de carregamento de dados para o Dashboard de Ações Afirmativas
 import pandas as pd
 import streamlit as st
 
+
+def find_column(df, pattern):
+    """
+    Encontra coluna no DataFrame que corresponde ao padrão (case-insensitive, ignorando espaços)
+    
+    Args:
+        df: DataFrame
+        pattern: padrão a procurar (ex: 'TIPODEIES', 'EDITAISAA')
+        
+    Returns:
+        str: nome da coluna ou None se não encontrar
+    """
+    pattern_normalized = pattern.upper().replace(' ', '')
+    for col in df.columns:
+        if col.upper().replace(' ', '') == pattern_normalized:
+            return col
+    return None
+
 @st.cache_data
 def load_all_areas():
     """
-    Carrega todas as áreas do arquivo dados_brutos.xlsx
+    Carrega todas as áreas do arquivo dados_brutos.xlsx com normalização de valores
     
     Returns:
         tuple: (areas_data, df_todas_areas, lista_areas)
@@ -22,10 +40,25 @@ def load_all_areas():
     for sheet_name in excel_file.sheet_names:
         df_area = pd.read_excel(excel_file, sheet_name=sheet_name)
         df_area['Área'] = sheet_name  # Adicionar coluna identificando a área
-        # Converter NOTA para string se a coluna existir
-        if 'NOTA' in df_area.columns:
-            df_area['NOTA'] = df_area['NOTA'].astype(str).str.strip()
+        
+        # Normalizar valores das colunas (mantendo nomes originais)
+        # Para 'Tipo de IES' ou 'TIPO DE IES' - encontrar e normalizar qualquer variação
+        for col_name in df_area.columns:
+            if col_name.upper().replace(' ', '') == 'TIPODEIES':
+                df_area[col_name] = df_area[col_name].fillna('').astype(str).str.strip().str.upper()
+            # Para 'Editais AA'
+            elif col_name.upper().replace(' ', '') == 'EDITAISAA':
+                df_area[col_name] = df_area[col_name].fillna('').astype(str).str.strip().str.upper()
+            # Para NOTA/Nota/NOTAS
+            elif col_name.upper() == 'NOTA' or col_name.upper() == 'NOTAS':
+                df_area[col_name] = df_area[col_name].astype(str).str.strip()
+        
         areas_data[sheet_name] = df_area
+    
+    # Criar DataFrame agregado com todas as áreas
+    df_todas_areas = pd.concat(areas_data.values(), ignore_index=True)
+    
+    return areas_data, df_todas_areas, list(excel_file.sheet_names)
     
     # Criar DataFrame agregado com todas as áreas
     df_todas_areas = pd.concat(areas_data.values(), ignore_index=True)
@@ -82,10 +115,18 @@ def prepare_dataframe(df):
     """
     df = df.copy()
     
-    # Classificar programas com/sem AA
-    df['Status AA'] = df['Editais AA'].apply(
-        lambda x: 'Com Editais AA' if str(x).upper() == 'SIM' else 'Sem Editais AA'
-    )
+    # Procurar a coluna de Editais AA (pode ser 'Editais AA' ou 'EDITAIS_AA' ou outra variação)
+    editais_col = None
+    for col in df.columns:
+        if col.upper().replace(' ', '') == 'EDITAISAA':
+            editais_col = col
+            break
+    
+    if editais_col is not None:
+        # Classificar programas com/sem AA
+        df['Status AA'] = df[editais_col].apply(
+            lambda x: 'Com Editais AA' if str(x).upper() == 'SIM' else 'Sem Editais AA'
+        )
     
     return df
 
@@ -157,9 +198,15 @@ def get_summary_stats(df):
     }
     
     if len(df) > 0:
-        # Programas com/sem AA
-        if 'Editais AA' in df.columns:
-            stats['com_aa'] = df['Editais AA'].str.upper().eq('SIM').sum()
+        # Programas com/sem AA - procurar coluna de Editais AA
+        editais_col = None
+        for col in df.columns:
+            if col.upper().replace(' ', '') == 'EDITAISAA':
+                editais_col = col
+                break
+        
+        if editais_col is not None:
+            stats['com_aa'] = df[editais_col].str.upper().eq('SIM').sum()
             stats['sem_aa'] = stats['total_programas'] - stats['com_aa']
             stats['percentual_aa'] = (stats['com_aa'] / stats['total_programas'] * 100) if stats['total_programas'] > 0 else 0
         

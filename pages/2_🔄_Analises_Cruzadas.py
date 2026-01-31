@@ -128,7 +128,7 @@ st.markdown("---")
 st.markdown("## 🏛️ Cruzamento: Tipo de IES x Modalidade de Ensino")
 
 if 'Tipo de IES' in df_filtrado.columns and 'Modalidade de Ensino' in df_filtrado.columns:
-    crosstab_ies_mod = pd.crosstab(
+    crosstab_ies = pd.crosstab(
         df_filtrado['Tipo de IES'],
         df_filtrado['Modalidade de Ensino']
     )

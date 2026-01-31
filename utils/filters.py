@@ -6,6 +6,24 @@ import pandas as pd
 from config import GRUPOS_SOCIAIS, ORDEM_NOTAS
 
 
+def find_column(df, pattern):
+    """
+    Encontra coluna no DataFrame que corresponde ao padrão (case-insensitive, ignorando espaços)
+    
+    Args:
+        df: DataFrame
+        pattern: padrão a procurar (ex: 'TIPODEIES', 'EDITAISAA')
+        
+    Returns:
+        str: nome da coluna ou None se não encontrar
+    """
+    pattern_normalized = pattern.upper().replace(' ', '')
+    for col in df.columns:
+        if col.upper().replace(' ', '') == pattern_normalized:
+            return col
+    return None
+
+
 def render_area_selector(lista_areas):
     """
     Render seletor de área na sidebar
@@ -93,8 +111,11 @@ def render_global_filters(df):
     # Filtros Institucionais
     st.sidebar.markdown("### 🏛️ Instituição")
     
-    if 'Tipo de IES' in df.columns:
-        tipos_ies = sorted(df['Tipo de IES'].dropna().unique().tolist())
+    # Encontrar coluna de Tipo de IES com suporte a múltiplas variações
+    tipo_ies_col = find_column(df, 'TIPODEIES')
+    
+    if tipo_ies_col is not None:
+        tipos_ies = sorted(df[tipo_ies_col].dropna().unique().tolist())
         tipos_selecionados = st.sidebar.multiselect(
             "Tipo de IES:",
             options=tipos_ies,
@@ -102,7 +123,7 @@ def render_global_filters(df):
             key='tipo_ies_filter'
         )
         if tipos_selecionados:
-            df_filtrado = df_filtrado[df_filtrado['Tipo de IES'].isin(tipos_selecionados)]
+            df_filtrado = df_filtrado[df_filtrado[tipo_ies_col].isin(tipos_selecionados)]
             filtros_ativos += 1
     
     if 'Modalidade de Ensino' in df.columns:
