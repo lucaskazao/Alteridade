@@ -31,10 +31,10 @@ st.markdown("---")
 # Criar gráfico (incluindo dados faltantes)
 fig, crosstab_data, info = create_ies_type_aa_chart(df, include_invalid=True)
 
-# Criar 3 gráficos de pizza lado a lado
+# Criar 4 gráficos de pizza lado a lado
 st.markdown("## 🥧 Distribuição de Ações Afirmativas por Tipo de IES")
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 # Pizza 1: Instituições Públicas
 with col1:
@@ -63,7 +63,7 @@ with col1:
             marker=dict(colors=colors_pub),
             hole=0.4,
             textposition='inside',
-            textinfo='label+value',
+            textinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>%{value} PPGs<br>%{percent}<extra></extra>'
         )])
         
@@ -107,7 +107,7 @@ with col2:
             marker=dict(colors=colors_priv),
             hole=0.4,
             textposition='inside',
-            textinfo='label+value',
+            textinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>%{value} PPGs<br>%{percent}<extra></extra>'
         )])
         
@@ -151,7 +151,7 @@ with col3:
             marker=dict(colors=colors_falt),
             hole=0.4,
             textposition='inside',
-            textinfo='label+value',
+            textinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>%{value} PPGs<br>%{percent}<extra></extra>'
         )])
         
@@ -165,6 +165,53 @@ with col3:
         
         total_falt = dados_faltantes.sum()
         st.metric("Total", f"{total_falt:.0f} PPGs")
+    else:
+        st.info("Sem dados")
+
+# Pizza 4: Composição de quem TEM AA (Pública vs Privada)
+with col4:
+    st.markdown("### 📊 Composição Com AA")
+    
+    # Pegar apenas dados "Com AA" de públicas e privadas
+    valores_com_aa = []
+    labels_com_aa = []
+    colors_com_aa = []
+    
+    if 'Pública' in crosstab_data.index and 'Com AA' in crosstab_data.columns:
+        val_pub = crosstab_data.loc['Pública', 'Com AA']
+        if val_pub > 0:
+            valores_com_aa.append(val_pub)
+            labels_com_aa.append('Pública')
+            colors_com_aa.append(CORES['primaria'])
+    
+    if 'Privada' in crosstab_data.index and 'Com AA' in crosstab_data.columns:
+        val_priv = crosstab_data.loc['Privada', 'Com AA']
+        if val_priv > 0:
+            valores_com_aa.append(val_priv)
+            labels_com_aa.append('Privada')
+            colors_com_aa.append(CORES['secundaria'])
+    
+    if valores_com_aa:
+        fig_composicao = go.Figure(data=[go.Pie(
+            labels=labels_com_aa,
+            values=valores_com_aa,
+            marker=dict(colors=colors_com_aa),
+            hole=0.4,
+            textposition='inside',
+            textinfo='label+value+percent',
+            hovertemplate='<b>%{label}</b><br>%{value} PPGs<br>%{percent}<extra></extra>'
+        )])
+        
+        fig_composicao.update_layout(
+            showlegend=True,
+            height=400,
+            margin=dict(t=10, b=10, l=10, r=10)
+        )
+        
+        st.plotly_chart(fig_composicao, use_container_width=True)
+        
+        total_com_aa = sum(valores_com_aa)
+        st.metric("Total Com AA", f"{total_com_aa:.0f} PPGs")
     else:
         st.info("Sem dados")
 
