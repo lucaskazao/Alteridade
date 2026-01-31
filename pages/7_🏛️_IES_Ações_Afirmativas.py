@@ -4,6 +4,7 @@ Página de análise de universidades privadas e públicas com AA
 """
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from utils.data_loader import load_all_areas, prepare_dataframe
 from utils.charts import create_ies_type_aa_chart
 from config import CORES
@@ -30,8 +31,142 @@ st.markdown("---")
 # Criar gráfico (incluindo dados faltantes)
 fig, crosstab_data, info = create_ies_type_aa_chart(df, include_invalid=True)
 
-# Exibir gráfico
-st.plotly_chart(fig, use_container_width=True)
+# Criar 3 gráficos de pizza lado a lado
+st.markdown("## 🥧 Distribuição de Ações Afirmativas por Tipo de IES")
+
+col1, col2, col3 = st.columns(3)
+
+# Pizza 1: Instituições Públicas
+with col1:
+    st.markdown("### 🏛️ Públicas")
+    
+    if 'Pública' in crosstab_data.index:
+        dados_publicas = crosstab_data.loc['Pública']
+        labels_pub = []
+        values_pub = []
+        colors_pub = []
+        
+        for status, valor in dados_publicas.items():
+            if valor > 0:
+                labels_pub.append(status)
+                values_pub.append(valor)
+                if status == 'Com AA':
+                    colors_pub.append(CORES['com_aa'])
+                elif status == 'Sem AA':
+                    colors_pub.append(CORES['sem_aa'])
+                else:
+                    colors_pub.append(CORES['neutra'])
+        
+        fig_pub = go.Figure(data=[go.Pie(
+            labels=labels_pub,
+            values=values_pub,
+            marker=dict(colors=colors_pub),
+            hole=0.4,
+            textposition='inside',
+            textinfo='label+value',
+            hovertemplate='<b>%{label}</b><br>%{value} PPGs<br>%{percent}<extra></extra>'
+        )])
+        
+        fig_pub.update_layout(
+            showlegend=True,
+            height=400,
+            margin=dict(t=10, b=10, l=10, r=10)
+        )
+        
+        st.plotly_chart(fig_pub, use_container_width=True)
+        
+        total_pub = dados_publicas.sum()
+        st.metric("Total", f"{total_pub:.0f} PPGs")
+    else:
+        st.info("Sem dados")
+
+# Pizza 2: Instituições Privadas
+with col2:
+    st.markdown("### 🏢 Privadas")
+    
+    if 'Privada' in crosstab_data.index:
+        dados_privadas = crosstab_data.loc['Privada']
+        labels_priv = []
+        values_priv = []
+        colors_priv = []
+        
+        for status, valor in dados_privadas.items():
+            if valor > 0:
+                labels_priv.append(status)
+                values_priv.append(valor)
+                if status == 'Com AA':
+                    colors_priv.append(CORES['com_aa'])
+                elif status == 'Sem AA':
+                    colors_priv.append(CORES['sem_aa'])
+                else:
+                    colors_priv.append(CORES['neutra'])
+        
+        fig_priv = go.Figure(data=[go.Pie(
+            labels=labels_priv,
+            values=values_priv,
+            marker=dict(colors=colors_priv),
+            hole=0.4,
+            textposition='inside',
+            textinfo='label+value',
+            hovertemplate='<b>%{label}</b><br>%{value} PPGs<br>%{percent}<extra></extra>'
+        )])
+        
+        fig_priv.update_layout(
+            showlegend=True,
+            height=400,
+            margin=dict(t=10, b=10, l=10, r=10)
+        )
+        
+        st.plotly_chart(fig_priv, use_container_width=True)
+        
+        total_priv = dados_privadas.sum()
+        st.metric("Total", f"{total_priv:.0f} PPGs")
+    else:
+        st.info("Sem dados")
+
+# Pizza 3: Dados Faltantes/Inválidos
+with col3:
+    st.markdown("### ⚠️ Dados Faltantes")
+    
+    if 'Dados Faltantes/Inválidos' in crosstab_data.index:
+        dados_faltantes = crosstab_data.loc['Dados Faltantes/Inválidos']
+        labels_falt = []
+        values_falt = []
+        colors_falt = []
+        
+        for status, valor in dados_faltantes.items():
+            if valor > 0:
+                labels_falt.append(status)
+                values_falt.append(valor)
+                if status == 'Com AA':
+                    colors_falt.append(CORES['com_aa'])
+                elif status == 'Sem AA':
+                    colors_falt.append(CORES['sem_aa'])
+                else:
+                    colors_falt.append(CORES['neutra'])
+        
+        fig_falt = go.Figure(data=[go.Pie(
+            labels=labels_falt,
+            values=values_falt,
+            marker=dict(colors=colors_falt),
+            hole=0.4,
+            textposition='inside',
+            textinfo='label+value',
+            hovertemplate='<b>%{label}</b><br>%{value} PPGs<br>%{percent}<extra></extra>'
+        )])
+        
+        fig_falt.update_layout(
+            showlegend=True,
+            height=400,
+            margin=dict(t=10, b=10, l=10, r=10)
+        )
+        
+        st.plotly_chart(fig_falt, use_container_width=True)
+        
+        total_falt = dados_faltantes.sum()
+        st.metric("Total", f"{total_falt:.0f} PPGs")
+    else:
+        st.info("Sem dados")
 
 # Exibir tabela com detalhes
 st.markdown("## 📊 Tabela Resumida")
@@ -66,27 +201,31 @@ with col4:
     st.metric("📋 % Cobertura", f"{pct_cobertura:.1f}%")
 
 # Análise por tipo de IES
-st.markdown("## 🔍 Análise Detalhada por Tipo de IES")
+st.markdown("## 🔍 Resumo Comparativo")
 
 col_publica, col_privada = st.columns(2)
 
 with col_publica:
     st.subheader("🏛️ Instituições Públicas")
-    st.metric("Com Ações Afirmativas", f"{info['pública_com_aa']:.0f}")
-    st.metric("Sem Ações Afirmativas", f"{info['pública_sem_aa']:.0f}")
+    
     total_pub = info['pública_com_aa'] + info['pública_sem_aa']
     if total_pub > 0:
         pct_pub_aa = (info['pública_com_aa'] / total_pub * 100)
-        st.metric("% com AA", f"{pct_pub_aa:.1f}%")
+        st.metric("Com AA", f"{info['pública_com_aa']:.0f}", delta=f"{pct_pub_aa:.1f}%")
+        st.metric("Sem AA", f"{info['pública_sem_aa']:.0f}", delta=f"{100-pct_pub_aa:.1f}%")
+    else:
+        st.info("Sem dados de instituições públicas")
 
 with col_privada:
     st.subheader("🏢 Instituições Privadas")
-    st.metric("Com Ações Afirmativas", f"{info['privada_com_aa']:.0f}")
-    st.metric("Sem Ações Afirmativas", f"{info['privada_sem_aa']:.0f}")
+    
     total_priv = info['privada_com_aa'] + info['privada_sem_aa']
     if total_priv > 0:
         pct_priv_aa = (info['privada_com_aa'] / total_priv * 100)
-        st.metric("% com AA", f"{pct_priv_aa:.1f}%")
+        st.metric("Com AA", f"{info['privada_com_aa']:.0f}", delta=f"{pct_priv_aa:.1f}%")
+        st.metric("Sem AA", f"{info['privada_sem_aa']:.0f}", delta=f"{100-pct_priv_aa:.1f}%")
+    else:
+        st.info("Sem dados de instituições privadas")
 
 st.markdown("---")
 st.markdown("""
